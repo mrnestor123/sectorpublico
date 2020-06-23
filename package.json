@@ -1,0 +1,22 @@
+{
+  "name": "sectorpublico",
+  "version": "1.0.0",
+  "description": "visor de presupuestos",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrnestor123/sectorpublico.git"
+  },
+  "author": "ernest y pepe",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrnestor123/sectorpublico/issues"
+  },
+  "homepage": "https://github.com/mrnestor123/sectorpublico#readme",
+  "dependencies": {
+    "frappe-charts": "^1.5.0"
+  }
+}

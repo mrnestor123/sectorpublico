@@ -1,4 +1,5 @@
 import { api_get } from './util.js'
+import { Chart } from "frappe-charts"
 
 var root = document.body;
 
