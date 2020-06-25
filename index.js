@@ -1,5 +1,6 @@
 import { api_get } from './util.js'
 import { Grafica } from './graficas.js'
+import { Tabla } from './tablas.js'
 
 var root = document.body;
 
@@ -31,6 +32,7 @@ function MainPage() {
         m.render(document.body, m(".ui.inverted.segment", { style: "height:150px" },
           m(".ui.huge.centered.header", { style: "margin:auto" }, "Sector Público"))),
         m.render(document.body, m('div', { id: 'frost-chart' })),
+        m(Tabla),
         m(Gastos)
       ]
     }
@@ -48,7 +50,7 @@ function Gastos() {
 
 function getData() {
   var data;
-  api_get("https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT * FROM gastos where exercici=2020 limit 10").then((res) => { console.log(res); })
+  api_get("https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT * FROM gastos where exercici=2020 limit 10").then((res) => { console.log(res.json); })
 }
 
 getData();
