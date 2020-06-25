@@ -6,13 +6,24 @@ var nonJsonErrors = function (xhr) {
   return JSON.parse(xhr.responseText);
 };
 
-
 function api_get(url, method = 'GET', data = {}) {
+  return fetch(url, {
+      method: method,
+      mode: 'cors',
+    })
+    .then((res) => {
+      return res;
+    })
+}
+
+
+function api_get2(url, method = 'GET', data = {}) {
   return m
     .request({
       method: method,
       url: url,
-      withCredentials: true,
+//      withCredentials: true,
+      headers: {'Access-Control-Allow-Origin':'*'},
       body: data,
       extract: nonJsonErrors,
     })

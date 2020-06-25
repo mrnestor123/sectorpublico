@@ -36,6 +36,13 @@ function MainPage() {
   }
 }
 
+function Gastos() {
+  return {
+    view : function() {
+      return null;
+    }
+  }
+}
 
 
 function getData() {
@@ -108,3 +115,4 @@ getData();
 
 
 
+*/
