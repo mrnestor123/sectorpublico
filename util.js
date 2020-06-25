@@ -13,7 +13,6 @@ function api_get(url, method = 'GET', data = {}) {
     mode: 'cors',
   })
     .then((res) => {
-      console.log(res);
       return res.json();
     })
 }

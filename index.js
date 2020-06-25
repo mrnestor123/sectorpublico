@@ -10,7 +10,7 @@ https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT p.codi,p.descripcio, S
 
 Habra que hacer un api_get
 
-SELECT * FROM gastos where exercici=2020 limit 10
+SELECT * FROM gastos where exercici=2020 limit 20
 
 SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined%') GROUP BY p.codi,p.descripcio
 */
@@ -23,18 +23,96 @@ m.route(root, '/', {
   },
 });
 
+//On the main page we get the data and pass it to all the charts
 function MainPage() {
+  var values = [];
+  var labels = [];
+  // we get the percentages to send them to the other functions
+  var percentages = [];
+  //variable to get the total percentage
+  var total = 0;
+
   return {
+    //sacamos los datos de la base de datos. Todas las tablas tendrán los mismos datos
+    oninit: function (vnode) {
+      api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => {
+        res[0].data.map((element) => {
+          //the data that is less than 1 million is not added to the chart
+          if (element[2] > 1000000) {
+            labels.push(element[1])
+            values.push(element[2]);
+          }
+          total += Number(element[2]);
+        })
+        values.map((element) => {
+          percentages.push(Math.floor((element * 100) / total))
+        }
+        )
+        console.log(values);
+        m.redraw();
+      }
+      )
+    },
     view: function (vnode) {
       return [
-        m.render(document.body, m(".ui.inverted.segment", { style: "height:150px" },
-          m(".ui.huge.centered.header", { style: "margin:auto" }, "Sector Público"))),
-        m.render(document.body, m('div', { id: 'frost-chart' })),
-        m(Gastos)
+        m(".ui.inverted.segment", { style: "height:150px" },
+          m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
+          m("h6.ui.large.centered.header", { style: "font-style:italic" }, "Los datos de tu comunidad a tu alcance")),
+        m(".ui.container", [
+          m("div", { id: 'axis-chart' }),
+          m('div', { id: 'pie-chart', style: 'margin-left:20px;margin-top:100px;' }),
+          m('div', { id: 'percentage-chart' }),
+          values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
+          labels.length > 0 ? m(PieChart, { labels: labels, values: percentages }) : null,
+        ]),
+        //    m(Gastos)
       ]
     }
   }
 }
+
+function AxisChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs);
+      new frappe.Chart('#axis-chart', {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'bar',
+        colors: ['red'],
+        height: 200,
+      })
+    }
+  }
+}
+
+// in this pie we have to get the percentage of each value 
+function PieChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      new frappe.Chart("#pie-chart", {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'pie',
+        colors: ['red'],
+        height: 400,
+        maxSlices: 5
+      })
+    }
+  }
+}
+
+
+
 
 function Gastos() {
   var data = [];
@@ -49,25 +127,16 @@ function Gastos() {
         console.log(data[0].data)
         data[0].data.map((element) => {
           console.log(element);
-          labels.push(element[1])
-          values.push(element[2]);
+          //the data that is less than 1 milion is not added to the chart
+          if (element[2] > 1000000) {
+            labels.push(element[1])
+            values.push(element[2]);
+          }
         })
       },
       view: function () {
         console.log(labels);
         console.log(values);
-        chartdata = {
-          labels: labels,
-          datasets: [
-            { values: values }
-          ]
-        }
-        return new frappe.Chart("body", {
-          data: chartdata,
-          type: 'bar',
-          colors: ['red'],
-          height: 200
-        });
       }
     }
   }
