@@ -2,7 +2,7 @@ import { api_get } from './util.js'
 
 var root = document.body;
 
-const API = 'https://sql.digitalvalue.es/sql/santcugatdelvalles';
+
 
 
 /*
@@ -37,28 +37,55 @@ function MainPage() {
 }
 
 function Gastos() {
+  var data = [];
+  var values = [];
+  var labels = [];
+  var chartdata;
+
+  function populateChart() {
+    return {
+      oninit: function () {
+        console.log(data);
+        console.log(data[0].data)
+        data[0].data.map((element) => {
+          console.log(element);
+          labels.push(element[1])
+          values.push(element[2]);
+        })
+      },
+      view: function () {
+        console.log(labels);
+        console.log(values);
+        chartdata = {
+          labels: labels,
+          datasets: [
+            { values: values }
+          ]
+        }
+        return new frappe.Chart("body", {
+          data: chartdata,
+          type: 'bar',
+          colors: ['red'],
+          height: 200
+        });
+      }
+    }
+  }
+
   return {
-    view : function() {
-      return null;
+    oninit: function (vnode) {
+      api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => { data = res; console.log(data); m.redraw(); })
+    },
+    view: function () {
+      return data.length > 0 ?
+        m(populateChart) : m("div");
     }
   }
 }
 
+function Grafica() {
 
-function getData() {
-  var data;
-  api_get("https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT * FROM gastos where exercici=2020 limit 10").then((res) => { console.log(res); })
-}
-
-getData();
-
-
-
-
-
-/**function Gastos() {
-  var data;
-  let chart = new frappe.Chart("#frost-chart", { // or DOM element
+  let chart = new frappe.Chart(m("div"), { // or DOM element
     data: {
       labels: [""],
 
@@ -99,20 +126,5 @@ getData();
   });
   chart.export();
 
-  return {
-    oninit: function (vnode) {
-      api_get("SELECT * FROM gastos where exercici=2020 limit 10").then((res) => data = res)
-    },
-    view: function (vnode) {
-      return m('div')
 
-    }
-  }
 }
-
-
-
-
-
-
-*/
