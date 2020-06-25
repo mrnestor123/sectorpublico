@@ -1,4 +1,5 @@
 import { api_get } from './util.js'
+import { Grafica } from './graficas.js'
 
 var root = document.body;
 
@@ -102,9 +103,4 @@ getData();
     }
   }
 }
-
-
-
-
-
-
+*/
