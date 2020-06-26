@@ -8,11 +8,16 @@ var root = document.body;
 
 
 /*
-https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined%') GROUP BY p.codi,p.descripcio
+https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '1_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio
+
+https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT%20p.codi,p.descripcio,%20SUM(total)%20as%20total%20FROM%20%20plan_economica%20p%20JOIN%20gastos%20g%20ON%20p.codi%20=%20SUBSTRING(g.economica,1,LENGTH(p.codi))%20WHERE%20exercici%20=%202020%20and%20(('undefined'%20=%20'undefined'%20and%20p.codi%20like%20'1_')%20OR%20g.programa%20like%20'undefined%25')%20GROUP%20BY%20p.codi,p.descripcio
+
+
 
 Habra que hacer un api_get
 
 SELECT * FROM gastos where exercici=2020 limit 20
+DESPESES FINANCERES"
 
 SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined%') GROUP BY p.codi,p.descripcio
 */
@@ -26,7 +31,64 @@ m.route(root, '/', {
 });
 
 
+var Grafica = {
+  view: function (vnode) {
+    let grafica = new frappe.Chart(vnode.attrs.div, {
+      data: {
+        labels: vnode.attrs.labels,
+        datasets: [
+          { values: vnode.attrs.values }
+        ]
+      },
+      type: vnode.attrs.type,
+      colors: ['red'],
+      height: 400,
+      isNavigable: 1,
+      truncateLegends: true,
+      tooltipOptions: {
+        formatTooltipX: d => (d + '').toUpperCase(),
+        formatTooltipY: d => d + ' €',
+      },
+      axisOptions: {
+        yAxisMode: 'span',   // Axis lines, default
+        xAxisMode: 'tick',   // No axis lines, only short ticks        // Allow skipping x values for space
+        // default: 0
+      },
+    })
 
+    grafica.parent.addEventListener('data-select', (e) => {
+      console.log(e);
+      api_get(`SELECT p.codi, p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica, 1, LENGTH(p.codi)) WHERE exercici = 2020 and(('undefined' = 'undefined' and p.codi like '${e.index}'_') OR g.programa like 'undefined%') GROUP BY p.codi, p.descripcio`).then((res) => console.log(res));
+
+
+      /* vnode.attrs.selectedvalues;
+       vnode.attrs.selectedlabels;
+       vnode.attrs.selectedtype;
+       m(interactiveGrafica)*/
+    })
+  }
+}
+
+
+var interactiveGrafica = {
+  view: function (vnode) {
+    let grafica = new frappe.Chart(vnode.attrs.div, {
+      data: {
+        labels: vnode.attrs.selectedlabels,
+        datasets: [
+          { values: vnode.attrs.selectedvalues, }
+        ],
+      },
+      type: vnode.attrs.selectedtype,
+      isNavigable: 1,
+      colors: ['red'],
+    })
+    console.log(grafica);
+    grafica.parent.addEventListener('data-select', (e) => {
+      console.log(e);
+    })
+  }
+}
 
 
 
@@ -38,7 +100,6 @@ function MainPage() {
   var percentages = [];
   //variable to get the total percentage
   var total = 0;
-
   //axis|pie|donut|percentage
   var selectedchart = 'axis';
 
@@ -69,42 +130,39 @@ function MainPage() {
           m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
           m("h6.ui.large.centered.header", { style: "font-style:italic" }, "Los datos de tu comunidad a tu alcance")),
         m(".ui.container", { style: "text-align:center" }, [
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
+            m("div", m(TablaGasto))
+          ),
           m(".ui.segment", { style: "margin-top:25px" }, [
-            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Utiliza diferentes gráficas"),
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Gráficas interactivas"),
+            m("div", { id: 'grafica' }),
+          ]),
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
             m(".large.ui.centered.buttons", { style: "margin:auto" }, [
-              m(".ui.button", {
-                class: selectedchart === 'axis' ? 'disabled' : '', onclick: function () {
-                  selectedchart = 'axis'
-                }
-              }, "xAxis"),
               m(".ui.button", {
                 class: selectedchart === 'pie' ? 'disabled' : '', onclick: function () {
                   selectedchart = 'pie'
+                  vnode.attrs.graf.type = 'pie';
                 }
               }, "Pie"),
               m(".ui.button", {
                 class: selectedchart === 'donut' ? 'disabled' : '', onclick: function () {
                   selectedchart = 'donut'
+                  vnode.attrs.graf.type = 'donut';
                 }
               }, "Donut"),
               m(".ui.button", {
                 class: selectedchart === 'percentage' ? 'disabled' : '', onclick: function () {
                   selectedchart = 'percentage'
+                  vnode.attrs.graf.type = 'percentage';
                 }
               }, "Percentage")
             ]),
-            m("div", { id: 'grafica' }),
-          ]),
-          m('.ui.segment',
-            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
             m("div", { id: "intpie" }),
             m("div", { id: "intaxis" })
           ),
-          m('.ui.segment',
-            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
-            m("div", m(TablaGasto))
-          ),
-
 
           // values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
           values.length > 0 && selectedchart === 'pie' ? m(PieChart, { labels: labels, values: percentages }) : null,
@@ -122,43 +180,13 @@ function MainPage() {
 }
 
 //función comun a casi todas las gráficas sin interacción. Se le pasa el tipo y los datos. Y el div en el que se pobla
-function Grafica() {
-  return {
-    view: function (vnode) {
-      let grafica = new frappe.Chart(vnode.attrs.div, {
-        data: {
-          labels: vnode.attrs.labels,
-          datasets: [
-            { values: vnode.attrs.values }
-          ]
-        },
-        type: vnode.attrs.type,
-        colors: ['red'],
-        height: 400,
-        isNavigable: 1,
-        truncateLegends: true,
-        tooltipOptions: {
-          formatTooltipX: d => (d + '').toUpperCase(),
-          formatTooltipY: d => d + ' €',
-        },
-        axisOptions: {
-          yAxisMode: 'span',   // Axis lines, default
-          xAxisMode: 'tick',   // No axis lines, only short ticks        // Allow skipping x values for space
-          // default: 0
-        },
-      })
+/*function Grafica() {
 
-      grafica.parent.addEventListener('data-select', (e) => {
-        console.log(e);
-      })
-
-    }
-  }
-}
+}*/
 
 
 //Pie Chart con interacción. Una vez clicas te sale una gráfica a partir de ella
-function InteractiveGrafica() {
+/*function InteractiveGrafica() {
   return {
     view: function (vnode) {
       console.log(vnode.attrs.values);
@@ -182,27 +210,8 @@ function InteractiveGrafica() {
       })
     }
   }
-}
+}*/
 
-
-function AxisChart() {
-  return {
-    view: function (vnode) {
-      console.log(vnode.attrs);
-      new frappe.Chart('#grafica', {
-        data: {
-          labels: vnode.attrs.labels,
-          datasets: [
-            { values: vnode.attrs.values }
-          ]
-        },
-        type: 'bar',
-        colors: ['red'],
-        height: 200,
-      })
-    }
-  }
-}
 
 // in this pie we have to get the percentage of each value 
 function PieChart() {
@@ -284,93 +293,92 @@ function Gastos() {
 }
 
 
-function TablaGasto(){
+function TablaGasto() {
   var data = []
   let suma1 = 0;
   let sumas = [];
   let i = 1;
 
   return {
-      oninit: function (vnode) {
-          api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => { data = res[0].data; console.log(data[0].data); m.redraw()})
-      },
-      view: function(vnode) {
-          return data.length > 0 ? m("table.ui.selectable.celled.orange.table", [
-              m("thead", 
-                  m("tr", [
-                      m("th", "CAPÍTULOS DE GASTOS(€)"),
-                      m("th.right aligned", "Creditos iniciales")
-                  ])
-              ),
-              m("tbody", [data.map((entry) => {
-                 //Codigo para calculo de costes por capitulos
-                 sumas[0] = 0;
-                 sumas.push(sumas[i-1] + parseFloat(entry[2],10))
-                 i++
-                 
-                return m("tr", [
-                  m("td", {}, entry[1]),
-                  m("td.right aligned", {}, formatoNumero(entry[2]))
-                ])
-              }),
-                m("tr.active", [
-                  m("td", m("b","OPERACIONES CORRIENTES CAP.(1/4)")),
-                  m("td.right aligned", {}, m("b", formatoNumero(sumas[4])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
-                ]),
-                m("tr.active", [
-                  m("td", m("b","OPERACIONES NO FINANCIERAS CAP.(1/9)")),
-                  m("td.right aligned", {}, m("b", formatoNumero(sumas[7])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
-                ]),
-                m("tr.active", [
-                  m("td", m("b","OPERACIONES EJERCICIO CAP.(1/9)")),
-                  m("td.right aligned", {}, m("b", formatoNumero(sumas[9])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
-                ])
-              ]
-              )
-          ]): m("table.ui.celled.table", 
-            m("thead", 
-                m("tr", [
-                    m("th", "CAPÍTULOS DE GASTOS(€)"),
-                    m("th.right aligned", "Creditos iniciales")
-                ])
-            )
-          )
-      } 
-    
+    oninit: function (vnode) {
+      api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => { data = res[0].data; console.log(data[0].data); m.redraw() })
+    },
+    view: function (vnode) {
+      return data.length > 0 ? m("table.ui.selectable.celled.orange.table", [
+        m("thead",
+          m("tr", [
+            m("th", "CAPÍTULOS DE GASTOS(€)"),
+            m("th.right aligned", "Creditos iniciales")
+          ])
+        ),
+        m("tbody", [data.map((entry) => {
+          //Codigo para calculo de costes por capitulos
+          sumas[0] = 0;
+          sumas.push(sumas[i - 1] + parseFloat(entry[2], 10))
+          i++
+
+          return m("tr", [
+            m("td", {}, entry[1]),
+            m("td.right aligned", {}, formatoNumero(entry[2]))
+          ])
+        }),
+        m("tr.active", [
+          m("td", m("b", "OPERACIONES CORRIENTES CAP.(1/4)")),
+          m("td.right aligned", {}, m("b", formatoNumero(sumas[4])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+        ]),
+        m("tr.active", [
+          m("td", m("b", "OPERACIONES NO FINANCIERAS CAP.(1/9)")),
+          m("td.right aligned", {}, m("b", formatoNumero(sumas[7])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+        ]),
+        m("tr.active", [
+          m("td", m("b", "OPERACIONES EJERCICIO CAP.(1/9)")),
+          m("td.right aligned", {}, m("b", formatoNumero(sumas[9])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+        ])
+        ]
+        )
+      ]) : m("table.ui.celled.table",
+        m("thead",
+          m("tr", [
+            m("th", "CAPÍTULOS DE GASTOS(€)"),
+            m("th.right aligned", "Creditos iniciales")
+          ])
+        )
+      )
+    }
   }
 }
 
-function TablaGasto2(){
+function TablaGasto2() {
   var data = []
   return {
-      oninit: function (vnode) {
-          api_get("SELECT * FROM gastos where exercici=2020 limit 10").then((res) => { data = res; console.log(data[0].data); })
-      },
-      view: function(vnode) {
-          return data.length > 0 ? m("table.ui.selectable.celled.red.table", [
-              m("thead", 
-                  m("tr", [
-                      m("th", "CAPÍTULOS DE GASTOS(€)"),
-                      m("th.right aligned", "Creditos iniciales")
-                  ])
-              ),
-              m("tbody", [data[0].data.map((entry) => {
-                return m("tr", [
-                  m("td", {}, entry[5]),
-                  m("td.right aligned", {}, formatoNumero(entry[6]))
-                ])
-              }),
-            ]
-              )
-          ]): m("table.ui.celled.table",
-                m("thead", 
-                    m("tr", [
-                        m("th", "CAPÍTULOS DE GASTOS(€)"),
-                          m("th.right aligned", "Creditos iniciales")
-                    ])
-                )
-              );
-      } 
-    
+    oninit: function (vnode) {
+      api_get("SELECT * FROM gastos where exercici=2020 limit 10").then((res) => { data = res; console.log(data[0].data); })
+    },
+    view: function (vnode) {
+      return data.length > 0 ? m("table.ui.selectable.celled.red.table", [
+        m("thead",
+          m("tr", [
+            m("th", "CAPÍTULOS DE GASTOS(€)"),
+            m("th.right aligned", "Creditos iniciales")
+          ])
+        ),
+        m("tbody", [data[0].data.map((entry) => {
+          return m("tr", [
+            m("td", {}, entry[5]),
+            m("td.right aligned", {}, formatoNumero(entry[6]))
+          ])
+        }),
+        ]
+        )
+      ]) : m("table.ui.celled.table",
+        m("thead",
+          m("tr", [
+            m("th", "CAPÍTULOS DE GASTOS(€)"),
+            m("th.right aligned", "Creditos iniciales")
+          ])
+        )
+      );
+    }
+
   }
 }
