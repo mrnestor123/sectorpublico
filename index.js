@@ -95,7 +95,8 @@ function MainPage() {
           ]),
           m('.ui.segment',
             m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
-            m("div", { id: "intpie" })
+            m("div", { id: "intpie" }),
+            m("div", { id: "intaxis" })
           ),
 
 
@@ -104,6 +105,7 @@ function MainPage() {
           values.length > 0 && selectedchart === 'donut' ? m(DonutChart, { labels: labels, values: percentages }) : null,
           values.length > 0 && selectedchart === 'axis' ? m(Grafica, { labels: labels, values: values, div: '#grafica', type: 'bar' }) : null,
           values.length > 0 && selectedchart === 'percentage' ? m(Grafica, { labels: labels, values: percentages, div: '#grafica', type: 'percentage' }) : null,
+          values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
           values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
 
         ]),
@@ -117,7 +119,7 @@ function MainPage() {
 function Grafica() {
   return {
     view: function (vnode) {
-      new frappe.Chart(vnode.attrs.div, {
+      let grafica = new frappe.Chart(vnode.attrs.div, {
         data: {
           labels: vnode.attrs.labels,
           datasets: [
@@ -127,6 +129,7 @@ function Grafica() {
         type: vnode.attrs.type,
         colors: ['red'],
         height: 400,
+        isNavigable: 1,
         truncateLegends: true,
         tooltipOptions: {
           formatTooltipX: d => (d + '').toUpperCase(),
@@ -138,6 +141,11 @@ function Grafica() {
           // default: 0
         },
       })
+
+      grafica.parent.addEventListener('data-select', (e) => {
+        console.log(e);
+      })
+
     }
   }
 }
@@ -152,21 +160,23 @@ function InteractiveGrafica() {
         data: {
           labels: vnode.attrs.labels,
           datasets: [
-            { values: vnode.attrs.values }
-          ]
+            { values: vnode.attrs.values, }
+          ],
+          yMarkers: [{ label: "Marker", value: 70 }],
+
+          yRegions: [{ label: "Region", start: -10, end: 50 }]
         },
         type: vnode.attrs.type,
+        isNavigable: 1,
         colors: ['red'],
-        height: 400
       })
+      console.log(grafica);
       grafica.parent.addEventListener('data-select', (e) => {
         console.log(e);
       })
     }
   }
 }
-
-
 
 
 function AxisChart() {
