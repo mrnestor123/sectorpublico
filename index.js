@@ -38,7 +38,7 @@ function MainPage() {
   var percentages = [];
   //variable to get the total percentage
   var total = 0;
-
+  var anyo = 2020;
   //axis|pie|donut|percentage
   var selectedchart = 'axis';
 
@@ -102,6 +102,10 @@ function MainPage() {
           m('.ui.segment',
             m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
             m("div", m(TablaGasto))
+          ),
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
+            m("div", m(TablaGasto2))
           ),
 
 
@@ -274,16 +278,36 @@ function Gastos() {
 
 function TablaGasto(){
   var data = []
-  let suma1 = 0;
   let sumas = [];
-  let i = 1;
+  var i = 1;
+  //podria ser Date.getYear()
+  var anyo = 2020;
 
   return {
       oninit: function (vnode) {
-          api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => { data = res[0].data; console.log(data[0].data); m.redraw()})
+          api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`).then((res) => { data = res[0].data; console.log(data[0].data); m.redraw()})
       },
       view: function(vnode) {
-          return data.length > 0 ? m("table.ui.selectable.celled.orange.table", [
+          return data.length > 0 ? [
+          m(".ui.buttons", [
+              //boton año anterior
+              m("button.ui.labeled.icon.button", { onclick: () => {
+                  anyo-=1; 
+                  api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+                  .then((res) => { console.log(vnode);data = res[0].data; i=1; sumas=[]; m.redraw()})}
+                }, 
+                m("i.left.chevron.icon"), anyo-1),
+              //año de los datos
+              m("button.ui.disabled.black.button", anyo),
+              //boton año siguiente
+              m("button.ui.right.labeled.icon.button", {onclick: () => {
+                  anyo+=1; 
+                  api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+                  .then((res) => { data = res[0].data; i=1; m.redraw()})}
+                },
+                anyo+1, m("i.right.chevron.icon")),
+            ]),
+          m("table.ui.selectable.celled.orange.table", [
               m("thead", 
                   m("tr", [
                       m("th", "CAPÍTULOS DE GASTOS(€)"),
@@ -293,9 +317,9 @@ function TablaGasto(){
               m("tbody", [data.map((entry) => {
                  //Codigo para calculo de costes por capitulos
                  sumas[0] = 0;
-                 sumas.push(sumas[i-1] + parseFloat(entry[2],10))
+                 sumas[i] = sumas[i-1] + parseFloat(entry[2],10)
                  i++
-                 
+                 console.log(i)
                 return m("tr", [
                   m("td", {}, entry[1]),
                   m("td.right aligned", {}, formatoNumero(entry[2]))
@@ -311,19 +335,38 @@ function TablaGasto(){
                 ]),
                 m("tr.active", [
                   m("td", m("b","OPERACIONES EJERCICIO CAP.(1/9)")),
-                  m("td.right aligned", {}, m("b", formatoNumero(sumas[9])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+                  m("td.right aligned", {}, m("b", formatoNumero(sumas[data.length])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
                 ])
               ]
               )
-          ]): m("table.ui.celled.table", 
+          ])] : [
+            m(".ui.buttons", [
+            //boton año anterior
+            m("button.ui.labeled.icon.button", { onclick: () => {
+                anyo-=1; 
+                api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+                .then((res) => { console.log(vnode);data = res[0].data; i=1; sumas=[]; m.redraw()})}
+              }, 
+              m("i.left.chevron.icon"), anyo-1),
+            //año de los datos
+            m("button.ui.disabled.black.button", anyo),
+            //boton año siguiente
+            m("button.ui.right.labeled.icon.button", {onclick: () => {
+                anyo+=1; 
+                api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+                .then((res) => { data = res[0].data; i=1; m.redraw()})}
+              },
+              anyo+1, m("i.right.chevron.icon")),
+          ]),
+            m("table.ui.celled.table", 
             m("thead", 
                 m("tr", [
                     m("th", "CAPÍTULOS DE GASTOS(€)"),
                     m("th.right aligned", "Creditos iniciales")
                 ])
             )
-          )
-      } 
+          )]
+          } 
     
   }
 }
@@ -362,3 +405,40 @@ function TablaGasto2(){
     
   }
 }
+
+/*function BotoneraAños() {
+
+   return {
+     view: (vnode) => {
+       return m(".ui.buttons", [
+        //boton año anterior
+        m("button.ui.labeled.icon.button", { onclick: () => {
+            anyo-=1; 
+            api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+            .then((res) => { console.log(vnode);data = res[0].data; i=1; sumas=[]; m.redraw()})}
+          }, 
+          m("i.left.chevron.icon"), anyo-1),
+        //año de los datos
+        m("button.ui.disabled.black.button", anyo),
+        //boton año siguiente
+        m("button.ui.right.labeled.icon.button", {onclick: () => {
+            anyo+=1; 
+            api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = ${anyo} and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`)
+            .then((res) => { data = res[0].data; i=1; m.redraw()})}
+          },
+          anyo+1, m("i.right.chevron.icon")),
+      ])
+     }
+   }
+}
+*/
+/*m("input", {type:"range",  list:"anyos"}),
+          m("datalist", {id:"anyos"}, [
+            m("option", {value:"2015", label:"2015"}),
+            m("option", {value:"2016", label:"2016"}),
+            m("option", {value:"2017", label:"2017"}),
+            m("option", {value:"2018", label:"2018"}),
+            m("option", {value:"2019", label:"2019"}),
+            m("option", {value:"2020", label:"2020"})
+          ]),
+*/
