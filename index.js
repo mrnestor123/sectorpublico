@@ -1,5 +1,5 @@
-import { api_get } from './util.js'
-import { Grafica } from './graficas.js'
+import { api_get, formatoNumero } from './util.js'
+//import { Grafica } from './graficas.js'
 //import { Tabla } from './tablas.js'
 
 var root = document.body;
@@ -12,7 +12,7 @@ https://sql.digitalvalue.es/sql/santcugatdelvalles/SELECT p.codi,p.descripcio, S
 
 Habra que hacer un api_get
 
-SELECT * FROM gastos where exercici=2020 limit 10
+SELECT * FROM gastos where exercici=2020 limit 20
 
 SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined%') GROUP BY p.codi,p.descripcio
 */
@@ -25,20 +25,213 @@ m.route(root, '/', {
   },
 });
 
+
+
+
+
+
+//On the main page we get the data and pass it to all the charts
 function MainPage() {
+  var values = [];
+  var labels = [];
+  // we get the percentages to send them to the other functions
+  var percentages = [];
+  //variable to get the total percentage
+  var total = 0;
+
+  //axis|pie|donut|percentage
+  var selectedchart = 'axis';
+
   return {
+    //sacamos los datos de la base de datos. Todas las tablas tendrán los mismos datos
+    oninit: function (vnode) {
+      api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => {
+        res[0].data.map((element) => {
+          //the data that is less than 1 million is not added to the chart
+          if (element[2] > 1000000) {
+            labels.push(element[1])
+            values.push(element[2]);
+          }
+          total += Number(element[2]);
+        })
+        values.map((element) => {
+          percentages.push(Math.floor((element * 100) / total))
+        }
+        )
+        console.log(values);
+        m.redraw();
+      }
+      )
+    },
     view: function (vnode) {
       return [
-        //m.render(document.body, m(".ui.inverted.segment", { style: "height:150px" },
-          //m(".ui.huge.centered.header", { style: "margin:auto" }, "Sector Público"))),
-        //m.render(document.body, m('div', { id: 'frost-chart' })),
-        m("div", m(TablaGasto2)),
-        m("div",{style: "padding-top: 20px"}, m(TablaGasto)),
-        //m("div", m(Gastos))
+        m(".ui.inverted.segment", { style: "height:150px" },
+          m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
+          m("h6.ui.large.centered.header", { style: "font-style:italic" }, "Los datos de tu comunidad a tu alcance")),
+        m(".ui.container", { style: "text-align:center" }, [
+          m(".ui.segment", { style: "margin-top:25px" }, [
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Utiliza diferentes gráficas"),
+            m(".large.ui.centered.buttons", { style: "margin:auto" }, [
+              m(".ui.button", {
+                class: selectedchart === 'axis' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'axis'
+                }
+              }, "xAxis"),
+              m(".ui.button", {
+                class: selectedchart === 'pie' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'pie'
+                }
+              }, "Pie"),
+              m(".ui.button", {
+                class: selectedchart === 'donut' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'donut'
+                }
+              }, "Donut"),
+              m(".ui.button", {
+                class: selectedchart === 'percentage' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'percentage'
+                }
+              }, "Percentage")
+            ]),
+            m("div", { id: 'grafica' }),
+          ]),
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
+            m("div", { id: "intpie" })
+          ),
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
+            m("div", m(TablaGasto))
+          ),
+
+
+          // values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
+          values.length > 0 && selectedchart === 'pie' ? m(PieChart, { labels: labels, values: percentages }) : null,
+          values.length > 0 && selectedchart === 'donut' ? m(DonutChart, { labels: labels, values: percentages }) : null,
+          values.length > 0 && selectedchart === 'axis' ? m(Grafica, { labels: labels, values: values, div: '#grafica', type: 'bar' }) : null,
+          values.length > 0 && selectedchart === 'percentage' ? m(Grafica, { labels: labels, values: percentages, div: '#grafica', type: 'percentage' }) : null,
+          values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
+
+        ]),
+        //    m(Gastos)
       ]
     }
   }
 }
+
+//función comun a casi todas las gráficas sin interacción. Se le pasa el tipo y los datos. Y el div en el que se pobla
+function Grafica() {
+  return {
+    view: function (vnode) {
+      new frappe.Chart(vnode.attrs.div, {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: vnode.attrs.type,
+        colors: ['red'],
+        height: 400,
+        truncateLegends: true,
+        tooltipOptions: {
+          formatTooltipX: d => (d + '').toUpperCase(),
+          formatTooltipY: d => d + ' €',
+        },
+        axisOptions: {
+          yAxisMode: 'span',   // Axis lines, default
+          xAxisMode: 'tick',   // No axis lines, only short ticks        // Allow skipping x values for space
+          // default: 0
+        },
+      })
+    }
+  }
+}
+
+
+//Pie Chart con interacción. Una vez clicas te sale una gráfica a partir de ella
+function InteractiveGrafica() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      let grafica = new frappe.Chart(vnode.attrs.div, {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: vnode.attrs.type,
+        colors: ['red'],
+        height: 400
+      })
+      grafica.parent.addEventListener('data-select', (e) => {
+        console.log(e);
+      })
+    }
+  }
+}
+
+
+function AxisChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs);
+      new frappe.Chart('#grafica', {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'bar',
+        colors: ['red'],
+        height: 200,
+      })
+    }
+  }
+}
+
+// in this pie we have to get the percentage of each value 
+function PieChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      new frappe.Chart("#grafica", {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'pie',
+        colors: ['red'],
+        height: 400
+      })
+    }
+  }
+}
+
+
+function DonutChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      new frappe.Chart("#grafica", {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'donut',
+        colors: ['red'],
+        height: 400
+      })
+    }
+  }
+}
+
 
 function Gastos() {
   var data = [];
@@ -53,25 +246,16 @@ function Gastos() {
         console.log(data[0].data)
         data[0].data.map((element) => {
           console.log(element);
-          labels.push(element[1])
-          values.push(element[2]);
+          //the data that is less than 1 milion is not added to the chart
+          if (element[2] > 1000000) {
+            labels.push(element[1])
+            values.push(element[2]);
+          }
         })
       },
       view: function () {
         console.log(labels);
         console.log(values);
-        chartdata = {
-          labels: labels,
-          datasets: [
-            { values: values }
-          ]
-        }
-        return new frappe.Chart("body", {
-          data: chartdata,
-          type: 'bar',
-          colors: ['red'],
-          height: 200
-        });
       }
     }
   }
@@ -85,11 +269,6 @@ function Gastos() {
         m(populateChart) : m("div");
     }
   }
-}
-
-function formatoNumero(numero){
-    let numFloat = parseFloat(numero,10)
-    return new Intl.NumberFormat("de-DE").format(numFloat)
 }
 
 
@@ -114,7 +293,6 @@ function TablaGasto(){
               m("tbody", [data.map((entry) => {
                  //Codigo para calculo de costes por capitulos
                  sumas[0] = 0;
-                 suma1 += formatoNumero(entry[2])
                  sumas.push(sumas[i-1] + parseFloat(entry[2],10))
                  i++
                  
@@ -124,16 +302,16 @@ function TablaGasto(){
                 ])
               }),
                 m("tr.active", [
-                  m("td", "OPERACIONES CORRIENTES CAP.(1/4)"),
-                  m("td.right aligned", {}, formatoNumero(sumas[4]))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+                  m("td", m("b","OPERACIONES CORRIENTES CAP.(1/4)")),
+                  m("td.right aligned", {}, m("b", formatoNumero(sumas[4])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
                 ]),
                 m("tr.active", [
-                  m("td", "OPERACIONES CORRIENTES CAP.(1/7)"),
-                  m("td.right aligned", {}, formatoNumero(sumas[7]))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+                  m("td", m("b","OPERACIONES NO FINANCIERAS CAP.(1/9)")),
+                  m("td.right aligned", {}, m("b", formatoNumero(sumas[7])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
                 ]),
                 m("tr.active", [
-                  m("td", m("OPERACIONES CORRIENTES CAP.(1/9)")),
-                  m("td.right aligned", {}, formatoNumero(sumas[9]))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
+                  m("td", m("b","OPERACIONES EJERCICIO CAP.(1/9)")),
+                  m("td.right aligned", {}, m("b", formatoNumero(sumas[9])))//dato = dato[0].dato.slice(0,4)[2].reduce((a,b) => a+b))
                 ])
               ]
               )
@@ -184,50 +362,3 @@ function TablaGasto2(){
     
   }
 }
-
-/*
-function Grafica() {
-
-  let chart = new frappe.Chart(m("div"), { // or DOM element
-    data: {
-      labels: [""],
-
-      datasets: [
-        {
-          name: "Some Data", chartType: 'bar',
-          values: [25, 40, 30, 35, 8, 52, 17, -4]
-        },
-        {
-          name: "Another Set", chartType: 'bar',
-          values: [25, 50, -10, 15, 18, 32, 27, 14]
-        },
-        {
-          name: "Yet Another", chartType: 'line',
-          values: [15, 20, -3, -15, 58, 12, -17, 37]
-        }
-      ],
-
-      yMarkers: [{
-        label: "Marker", value: 70,
-        options: { labelPos: 'left' }
-      }],
-      yRegions: [{
-        label: "Region", start: -10, end: 50,
-        options: { labelPos: 'right' }
-      }]
-    },
-
-    title: "My Awesome Chart",
-    type: 'bar', // or 'bar', 'line', 'pie', 'percentage'
-    height: 300,
-    colors: ['purple', '#ffa3ef', 'light-blue'],
-
-    tooltipOptions: {
-      formatTooltipX: d => (d + '').toUpperCase(),
-      formatTooltipY: d => d + ' pts',
-    }
-  });
-  chart.export();
-
-
-}*/

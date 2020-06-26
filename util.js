@@ -13,7 +13,6 @@ function api_get(url, method = 'GET', data = {}) {
     mode: 'cors',
   })
     .then((res) => {
-      console.log(res);
       return res.json();
     })
 }
@@ -39,8 +38,12 @@ function api_get2(url, method = 'GET', data = {}) {
     });
 }
 
+function formatoNumero(numero){
+  let numFloat = parseFloat(numero,10)
+  return new Intl.NumberFormat("de-DE").format(numFloat)
+}
 
-export { api_get }
+export { api_get, formatoNumero }
 
 
 
