@@ -95,9 +95,7 @@ function MainPage() {
           ]),
           m('.ui.segment',
             m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
-
-
-
+            m("div", { id: "intpie" })
           ),
 
 
@@ -106,6 +104,8 @@ function MainPage() {
           values.length > 0 && selectedchart === 'donut' ? m(DonutChart, { labels: labels, values: percentages }) : null,
           values.length > 0 && selectedchart === 'axis' ? m(Grafica, { labels: labels, values: values, div: '#grafica', type: 'bar' }) : null,
           values.length > 0 && selectedchart === 'percentage' ? m(Grafica, { labels: labels, values: percentages, div: '#grafica', type: 'percentage' }) : null,
+          values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
+
         ]),
         //    m(Gastos)
       ]
@@ -113,7 +113,7 @@ function MainPage() {
   }
 }
 
-//función comun a todas las gráficas. Se le pasa el tipo y los datos. Y el div en el que se pobla
+//función comun a casi todas las gráficas sin interacción. Se le pasa el tipo y los datos. Y el div en el que se pobla
 function Grafica() {
   return {
     view: function (vnode) {
@@ -141,6 +141,31 @@ function Grafica() {
     }
   }
 }
+
+
+//Pie Chart con interacción. Una vez clicas te sale una gráfica a partir de ella
+function InteractiveGrafica() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      let grafica = new frappe.Chart(vnode.attrs.div, {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: vnode.attrs.type,
+        colors: ['red'],
+        height: 400
+      })
+      grafica.parent.addEventListener('data-select', (e) => {
+        console.log(e);
+      })
+    }
+  }
+}
+
 
 
 
