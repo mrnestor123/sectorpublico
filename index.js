@@ -23,6 +23,11 @@ m.route(root, '/', {
   },
 });
 
+
+
+
+
+
 //On the main page we get the data and pass it to all the charts
 function MainPage() {
   var values = [];
@@ -31,6 +36,9 @@ function MainPage() {
   var percentages = [];
   //variable to get the total percentage
   var total = 0;
+
+  //axis|pie|donut|percentage
+  var selectedchart = 'axis';
 
   return {
     //sacamos los datos de la base de datos. Todas las tablas tendrán los mismos datos
@@ -58,12 +66,46 @@ function MainPage() {
         m(".ui.inverted.segment", { style: "height:150px" },
           m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
           m("h6.ui.large.centered.header", { style: "font-style:italic" }, "Los datos de tu comunidad a tu alcance")),
-        m(".ui.container", [
-          m("div", { id: 'axis-chart' }),
-          m('div', { id: 'pie-chart', style: 'margin-left:20px;margin-top:100px;' }),
-          m('div', { id: 'percentage-chart' }),
-          values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
-          labels.length > 0 ? m(PieChart, { labels: labels, values: percentages }) : null,
+        m(".ui.container", { style: "text-align:center" }, [
+          m(".ui.segment", { style: "margin-top:25px" }, [
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Utiliza diferentes gráficas"),
+            m(".large.ui.centered.buttons", { style: "margin:auto" }, [
+              m(".ui.button", {
+                class: selectedchart === 'axis' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'axis'
+                }
+              }, "xAxis"),
+              m(".ui.button", {
+                class: selectedchart === 'pie' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'pie'
+                }
+              }, "Pie"),
+              m(".ui.button", {
+                class: selectedchart === 'donut' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'donut'
+                }
+              }, "Donut"),
+              m(".ui.button", {
+                class: selectedchart === 'percentage' ? 'disabled' : '', onclick: function () {
+                  selectedchart = 'percentage'
+                }
+              }, "Percentage")
+            ]),
+            m("div", { id: 'grafica' }),
+          ]),
+          m('.ui.segment',
+            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
+
+
+
+          ),
+
+
+          // values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
+          values.length > 0 && selectedchart === 'pie' ? m(PieChart, { labels: labels, values: percentages }) : null,
+          values.length > 0 && selectedchart === 'donut' ? m(DonutChart, { labels: labels, values: percentages }) : null,
+          values.length > 0 && selectedchart === 'axis' ? m(Grafica, { labels: labels, values: values, div: '#grafica', type: 'bar' }) : null,
+          values.length > 0 && selectedchart === 'percentage' ? m(Grafica, { labels: labels, values: percentages, div: '#grafica', type: 'percentage' }) : null,
         ]),
         //    m(Gastos)
       ]
@@ -71,11 +113,42 @@ function MainPage() {
   }
 }
 
+//función comun a todas las gráficas. Se le pasa el tipo y los datos. Y el div en el que se pobla
+function Grafica() {
+  return {
+    view: function (vnode) {
+      new frappe.Chart(vnode.attrs.div, {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: vnode.attrs.type,
+        colors: ['red'],
+        height: 400,
+        truncateLegends: true,
+        tooltipOptions: {
+          formatTooltipX: d => (d + '').toUpperCase(),
+          formatTooltipY: d => d + ' €',
+        },
+        axisOptions: {
+          yAxisMode: 'span',   // Axis lines, default
+          xAxisMode: 'tick',   // No axis lines, only short ticks        // Allow skipping x values for space
+          // default: 0
+        },
+      })
+    }
+  }
+}
+
+
+
 function AxisChart() {
   return {
     view: function (vnode) {
       console.log(vnode.attrs);
-      new frappe.Chart('#axis-chart', {
+      new frappe.Chart('#grafica', {
         data: {
           labels: vnode.attrs.labels,
           datasets: [
@@ -95,7 +168,7 @@ function PieChart() {
   return {
     view: function (vnode) {
       console.log(vnode.attrs.values);
-      new frappe.Chart("#pie-chart", {
+      new frappe.Chart("#grafica", {
         data: {
           labels: vnode.attrs.labels,
           datasets: [
@@ -104,14 +177,30 @@ function PieChart() {
         },
         type: 'pie',
         colors: ['red'],
-        height: 400,
-        maxSlices: 5
+        height: 400
       })
     }
   }
 }
 
-
+function DonutChart() {
+  return {
+    view: function (vnode) {
+      console.log(vnode.attrs.values);
+      new frappe.Chart("#grafica", {
+        data: {
+          labels: vnode.attrs.labels,
+          datasets: [
+            { values: vnode.attrs.values }
+          ]
+        },
+        type: 'donut',
+        colors: ['red'],
+        height: 400
+      })
+    }
+  }
+}
 
 
 function Gastos() {
@@ -152,48 +241,4 @@ function Gastos() {
   }
 }
 
-function Grafica() {
 
-  let chart = new frappe.Chart(m("div"), { // or DOM element
-    data: {
-      labels: [""],
-
-      datasets: [
-        {
-          name: "Some Data", chartType: 'bar',
-          values: [25, 40, 30, 35, 8, 52, 17, -4]
-        },
-        {
-          name: "Another Set", chartType: 'bar',
-          values: [25, 50, -10, 15, 18, 32, 27, 14]
-        },
-        {
-          name: "Yet Another", chartType: 'line',
-          values: [15, 20, -3, -15, 58, 12, -17, 37]
-        }
-      ],
-
-      yMarkers: [{
-        label: "Marker", value: 70,
-        options: { labelPos: 'left' }
-      }],
-      yRegions: [{
-        label: "Region", start: -10, end: 50,
-        options: { labelPos: 'right' }
-      }]
-    },
-
-    title: "My Awesome Chart",
-    type: 'bar', // or 'bar', 'line', 'pie', 'percentage'
-    height: 300,
-    colors: ['purple', '#ffa3ef', 'light-blue'],
-
-    tooltipOptions: {
-      formatTooltipX: d => (d + '').toUpperCase(),
-      formatTooltipY: d => d + ' pts',
-    }
-  });
-  chart.export();
-
-
-}
