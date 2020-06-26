@@ -1,18 +1,20 @@
 //const API = 'https://public.digitalvalue.es:8868/v2';
-const API = 'https://sql.digitalvalue.es/sql/santcugatdelvalles';
+const API = 'https://sql.digitalvalue.es/sql/santcugatdelvalles/';
 var nonJsonErrors = function (xhr) {
   //    var e =  xhr.status == 400 ? JSON.stringify(xhr.responseText) : xhr.responseText
   //    console.log("TYPE:",responseType, xhr.responseText)
   return JSON.parse(xhr.responseText);
 };
 
+
 function api_get(url, method = 'GET', data = {}) {
-  return fetch(url, {
-      method: method,
-      mode: 'cors',
-    })
+  return fetch(API + url, {
+    method: method,
+    mode: 'cors',
+  })
     .then((res) => {
-      return res;
+      console.log(res);
+      return res.json();
     })
 }
 
@@ -22,8 +24,8 @@ function api_get2(url, method = 'GET', data = {}) {
     .request({
       method: method,
       url: url,
-//      withCredentials: true,
-      headers: {'Access-Control-Allow-Origin':'*'},
+      //      withCredentials: true,
+      headers: { 'Access-Control-Allow-Origin': '*' },
       body: data,
       extract: nonJsonErrors,
     })
@@ -36,6 +38,7 @@ function api_get2(url, method = 'GET', data = {}) {
       return e.response;
     });
 }
+
 
 export { api_get }
 
