@@ -1,4 +1,4 @@
-import { api_get, formatoNumero } from './util.js'
+import { api_get, formatoNumero, getData } from './util.js'
 //import { Grafica } from './graficas.js'
 //import { Tabla } from './tablas.js'
 
@@ -30,9 +30,8 @@ m.route(root, '/', {
   },
 });
 
-
 var Grafica = {
-  view: function (vnode) {
+  oninit: function (vnode) {
     let grafica = new frappe.Chart(vnode.attrs.div, {
       data: {
         labels: vnode.attrs.labels,
@@ -47,84 +46,97 @@ var Grafica = {
       truncateLegends: true,
       tooltipOptions: {
         formatTooltipX: d => (d + '').toUpperCase(),
-        formatTooltipY: d => d + ' €',
-      },
-      axisOptions: {
-        yAxisMode: 'span',   // Axis lines, default
-        xAxisMode: 'tick',   // No axis lines, only short ticks        // Allow skipping x values for space
-        // default: 0
-      },
+        formatTooltipY: d => formatoNumero(d) + ' €',
+      }
     })
-
     grafica.parent.addEventListener('data-select', (e) => {
       console.log(e);
-      api_get(`SELECT p.codi, p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica, 1, LENGTH(p.codi)) WHERE exercici = 2020 and(('undefined' = 'undefined' and p.codi like '${e.index}'_') OR g.programa like 'undefined%') GROUP BY p.codi, p.descripcio`).then((res) => console.log(res));
-
-
-      /* vnode.attrs.selectedvalues;
-       vnode.attrs.selectedlabels;
-       vnode.attrs.selectedtype;
-       m(interactiveGrafica)*/
+      vnode.attrs.selectedtitle = e.label;
+      var index = Number(e.index) + 1;
+      api_get(`SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '${index}_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio`).then(
+        (res) => {
+          vnode.attrs.selected.title = e.label;
+          vnode.attrs.selected.list = getData(res);
+          vnode.attrs.selected.type = 'pie';
+          console.log(vnode.attrs);
+          m.redraw();
+        });
     })
+  },
+  view: function (vnode) {
+    console.log(vnode.attrs.values);
+
+  }
+}
+
+var InteractiveSegment = {
+  view: function (vnode) {
+    console.log(vnode.attrs);
+    return m(".ui.segment", [
+      m("h5.ui.large.centered.header", { style: "margin-top:10px" }, vnode.attrs.selected.title),
+      m(".large.ui.centered.buttons", { style: "margin:auto" }, [
+        m(".ui.button", {
+          class: vnode.attrs.selected.type === 'pie' ? 'disabled' : '', onclick: function () {
+            vnode.attrs.selected.type = 'pie';
+          }
+        }, "Pie"),
+        m(".ui.button", {
+          class: vnode.attrs.selected.type === 'donut' ? 'disabled' : '', onclick: function () {
+            vnode.attrs.selected.type = 'donut';
+          }
+        }, "Donut"),
+        m(".ui.button", {
+          class: vnode.attrs.selected.type === 'percentage' ? 'disabled' : '', onclick: function () {
+            vnode.attrs.selected.type = 'percentage';
+          }
+        }, "Percentage")
+      ]),
+      m("div", { id: "selected_chart" }),
+      m(InteractiveGrafica, vnode.attrs.selected)
+    ])
   }
 }
 
 
-var interactiveGrafica = {
+var InteractiveGrafica = {
   view: function (vnode) {
-    let grafica = new frappe.Chart(vnode.attrs.div, {
+    console.log(vnode.attrs)
+    let grafica = new frappe.Chart('#selected_chart', {
       data: {
-        labels: vnode.attrs.selectedlabels,
+        labels: vnode.attrs.list[0],
         datasets: [
-          { values: vnode.attrs.selectedvalues, }
+          { values: vnode.attrs.list[2], }
         ],
       },
-      type: vnode.attrs.selectedtype,
-      isNavigable: 1,
+      type: vnode.attrs.type,
       colors: ['red'],
-    })
-    console.log(grafica);
-    grafica.parent.addEventListener('data-select', (e) => {
-      console.log(e);
     })
   }
 }
-
 
 
 //On the main page we get the data and pass it to all the charts
 function MainPage() {
-  var values = [];
-  var labels = [];
-  // we get the percentages to send them to the other functions
-  var percentages = [];
-  //variable to get the total percentage
-  var total = 0;
-  //axis|pie|donut|percentage
-  var selectedchart = 'axis';
+  //el grafico de barras. Tiene un paramétro selected para saber que ha seleccionado
+  var axischart = { values: [], labels: [], selected: {}, div: '#grafica', type: 'bar' }
+
+  var data = [];
 
   return {
     //sacamos los datos de la base de datos. Todas las tablas tendrán los mismos datos
     oninit: function (vnode) {
       api_get("SELECT p.codi,p.descripcio, SUM(total) as total FROM  plan_economica p JOIN gastos g ON p.codi = SUBSTRING(g.economica,1,LENGTH(p.codi)) WHERE exercici = 2020 and (('undefined' = 'undefined' and p.codi like '_') OR g.programa like 'undefined') GROUP BY p.codi,p.descripcio").then((res) => {
-        res[0].data.map((element) => {
-          //the data that is less than 1 million is not added to the chart
-          if (element[2] > 1000000) {
-            labels.push(element[1])
-            values.push(element[2]);
-          }
-          total += Number(element[2]);
-        })
-        values.map((element) => {
-          percentages.push(Math.floor((element * 100) / total))
-        }
-        )
-        console.log(values);
+        data = getData(res);
+        axischart.values = data[1];
+        axischart.labels = data[0];
+        axischart.percentages = data[2];
+        console.log(vnode.attrs.first.values.length);
         m.redraw();
-      }
-      )
+      })
     },
     view: function (vnode) {
+      console.log(vnode.attrs);
+      console.log(axischart)
       return [
         m(".ui.inverted.segment", { style: "height:150px" },
           m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
@@ -132,46 +144,14 @@ function MainPage() {
         m(".ui.container", { style: "text-align:center" }, [
           m('.ui.segment',
             m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Información de la hacienda local"),
-            m("div", m(TablaGasto))
+            m("div", m(TablaGasto)),
           ),
           m(".ui.segment", { style: "margin-top:25px" }, [
             m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Gráficas interactivas"),
             m("div", { id: 'grafica' }),
+            axischart.values.length > 0 ? m(Grafica, axischart) : null,
           ]),
-          m('.ui.segment',
-            m("h5.ui.large.centered.header", { style: "margin-top:10px" }, "Saca información de lo que elijas"),
-            m(".large.ui.centered.buttons", { style: "margin:auto" }, [
-              m(".ui.button", {
-                class: selectedchart === 'pie' ? 'disabled' : '', onclick: function () {
-                  selectedchart = 'pie'
-                  vnode.attrs.graf.type = 'pie';
-                }
-              }, "Pie"),
-              m(".ui.button", {
-                class: selectedchart === 'donut' ? 'disabled' : '', onclick: function () {
-                  selectedchart = 'donut'
-                  vnode.attrs.graf.type = 'donut';
-                }
-              }, "Donut"),
-              m(".ui.button", {
-                class: selectedchart === 'percentage' ? 'disabled' : '', onclick: function () {
-                  selectedchart = 'percentage'
-                  vnode.attrs.graf.type = 'percentage';
-                }
-              }, "Percentage")
-            ]),
-            m("div", { id: "intpie" }),
-            m("div", { id: "intaxis" })
-          ),
-
-          // values.length > 0 ? m(AxisChart, { labels: labels, values: values }) : null,
-          values.length > 0 && selectedchart === 'pie' ? m(PieChart, { labels: labels, values: percentages }) : null,
-          values.length > 0 && selectedchart === 'donut' ? m(DonutChart, { labels: labels, values: percentages }) : null,
-          values.length > 0 && selectedchart === 'axis' ? m(Grafica, { labels: labels, values: values, div: '#grafica', type: 'bar' }) : null,
-          values.length > 0 && selectedchart === 'percentage' ? m(Grafica, { labels: labels, values: percentages, div: '#grafica', type: 'percentage' }) : null,
-          values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
-          values.length > 0 ? m(InteractiveGrafica, { labels: labels, values: percentages, div: '#intpie', type: 'pie' }) : null,
-
+          Object.keys(axischart.selected).length > 0 ? m(InteractiveSegment, axischart) : null,
         ]),
         //    m(Gastos)
       ]
@@ -179,10 +159,6 @@ function MainPage() {
   }
 }
 
-//función comun a casi todas las gráficas sin interacción. Se le pasa el tipo y los datos. Y el div en el que se pobla
-/*function Grafica() {
-
-}*/
 
 
 //Pie Chart con interacción. Una vez clicas te sale una gráfica a partir de ella
@@ -197,7 +173,7 @@ function MainPage() {
             { values: vnode.attrs.values, }
           ],
           yMarkers: [{ label: "Marker", value: 70 }],
-
+ 
           yRegions: [{ label: "Region", start: -10, end: 50 }]
         },
         type: vnode.attrs.type,
