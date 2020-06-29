@@ -38,12 +38,38 @@ function api_get2(url, method = 'GET', data = {}) {
     });
 }
 
-function formatoNumero(numero){
-  let numFloat = parseFloat(numero,10)
+// formatea el número al formato alemán
+function formatoNumero(numero) {
+  let numFloat = parseFloat(numero, 10)
   return new Intl.NumberFormat("de-DE").format(numFloat)
 }
 
-export { api_get, formatoNumero }
+
+//Dada una respuesta de la bd sacamos las listas de esa base de datos para poblar la gráfica.
+//Una lista con lista labels,values y percentages
+function getData(res) {
+  var labels = [];
+  var values = [];
+  var total = 0;
+  var percentages = [];
+
+  res[0].data.map((element) => {
+    //the data that is less than 1 million is not added to the chart
+    if (element[2] > 1000000) {
+      labels.push(element[1])
+      values.push(element[2]);
+    }
+    labels.push()
+    total += Number(element[2]);
+  })
+  values.map((element) => {
+    percentages.push(Math.floor((element * 100) / total))
+  })
+
+  return [labels, values, percentages]
+}
+
+export { api_get, formatoNumero, getData }
 
 
 
