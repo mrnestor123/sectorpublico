@@ -136,7 +136,7 @@ function MainPage() {
     },
     view: function (vnode) {
       console.log(vnode.attrs);
-      console.log(axischart)
+      console.log('que haga un commit');
       return [
         m(".ui.inverted.segment", { style: "height:150px" },
           m("h1.ui.huge.centered.header", { style: "margin-top:20px;" }, "SECTOR PÚBLICO"),
